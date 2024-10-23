@@ -24,3 +24,4 @@ def parse_version_info(version_str: str):
 
 
 version_info = parse_version_info(__version__)
+

@@ -1,0 +1,27 @@
+1. 普通推理和导出视频
+
+2. 时空动作检测
+一定要安装 mmdet 依赖！！！！！！！
+直接安装会有问题
+1.去 github 下载源码
+2.修改 mmdet/__init__.py 中的 mmcv_maximum_version = '2.2.0' 为 mmcv_maximum_version = '2.2.1'
+3.使用命令：python setup.py sdist 。打包文件，并拿到压缩包
+4.再执行命令：pip install dist/mmdet-3.3.0.tar.gz
+5.安装成功，进行测试
+
+python demo/demo_spatiotemporal_det.py data/shop_20240808.mp4 data/spa/shop_20240808_zh.mp4 --config configs/detection/slowonly/slowonly_kinetics400-pretrained-r101_8xb16-8x8x1-20e_ava21-rgb.py  --checkpoint models/slowonly_kinetics400-pretrained-r101_8xb16-8x8x1-20e_ava21-rgb_20220906-43f16877.pth  --det-config demo/demo_configs/faster-rcnn_r50_fpn_2x_coco_infer.py  --det-checkpoint http://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_2x_coco/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth  --det-score-thr 0.7 --action-score-thr 0.5 --label-map tools/data/ava/label_map_zh.txt --predict-stepsize 8 --output-stepsize 4 --output-fps 12
+
+python demo/demo_spatiotemporal_det.py demo/demo.mp4 demo/demo_spatiotemporal_det.mp4 \
+    --config configs/detection/slowonly/slowonly_kinetics400-pretrained-r101_8xb16-8x8x1-20e_ava21-rgb.py \
+    --checkpoint https://download.openmmlab.com/mmaction/detection/ava/slowonly_omnisource_pretrained_r101_8x8x1_20e_ava_rgb/slowonly_omnisource_pretrained_r101_8x8x1_20e_ava_rgb_20201217-16378594.pth \
+    --det-config demo/demo_configs/faster-rcnn_r50_fpn_2x_coco_infer.py \
+    --det-checkpoint http://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_2x_coco/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth \
+    --det-score-thr 0.9 \
+    --action-score-thr 0.5 \
+    --label-map tools/data/ava/label_map.txt \
+    --predict-stepsize 8 \
+    --output-stepsize 4 \
+    --output-fps 6
+
+3.骨骼点检测
+python demo/demo_skeleton.py data/test.mp4 data/skeleton/test_0718.mp4 --config configs/skeleton/posec3d/slowonly_r50_8xb32-u48-240e_k400-keypoint.py --checkpoint models/slowonly_r50_8xb32-u48-240e_k400-keypoint_20230731-7f498b55.pth --det-config demo/demo_configs/faster-rcnn_r50_fpn_2x_coco_infer.py --det-checkpoint models/faster_rcnn_r50_caffe_fpn_mstrain_2x_coco_bbox_mAP-0.397_20200504_231813-10b2de58.pth --det-score-thr 0.9 --det-cat-id 0 --pose-config demo/demo_configs/td-hm_hrnet-w32_8xb64-210e_coco-256x192_infer.py --pose-checkpoint models/td-hm_hrnet-w32_8xb64-210e_coco-256x192-81c58e40_20220909.pth --label-map tools/data/kinetics/label_map_k400.txt

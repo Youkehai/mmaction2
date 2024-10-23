@@ -11,6 +11,7 @@ import torch
 from mmengine import DictAction
 from mmengine.runner import load_checkpoint
 from mmengine.structures import InstanceData
+from PIL import ImageFont, ImageDraw, Image
 
 from mmaction.apis import detection_inference
 from mmaction.registry import MODELS
@@ -22,12 +23,12 @@ try:
 except ImportError:
     raise ImportError('Please install moviepy to enable output file')
 
-FONTFACE = cv2.FONT_HERSHEY_DUPLEX
-FONTSCALE = 0.5
-FONTCOLOR = (255, 255, 255)  # BGR, white
-MSGCOLOR = (128, 128, 128)  # BGR, gray
-THICKNESS = 1
-LINETYPE = 1
+# 加载中文字体
+font_path = 'C:\\Windows\\Fonts\\msyh.ttc'  # 需要替换成实际的字体文件路径
+font = ImageFont.truetype(font_path, 14)  # 设置字体及大小
+
+FONTCOLOR = (255, 255, 255)  # RGB, white
+MSGCOLOR = (128, 128, 128)  # RGB, gray
 
 
 def hex2color(h):
@@ -56,7 +57,6 @@ def visualize(frames, annotations, plate=plate_blue, max_num=5):
     Returns:
         list[np.ndarray]: Visualized frames.
     """
-
     assert max_num + 1 <= len(plate)
     plate = [x[::-1] for x in plate]
     frames_out = cp.deepcopy(frames)
@@ -82,20 +82,47 @@ def visualize(frames, annotations, plate=plate_blue, max_num=5):
                 box = (box * scale_ratio).astype(np.int64)
                 st, ed = tuple(box[:2]), tuple(box[2:])
                 cv2.rectangle(frame, st, ed, plate[0], 2)
+                img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                draw = ImageDraw.Draw(img_pil)
                 for k, lb in enumerate(label):
                     if k >= max_num:
                         break
                     text = abbrev(lb)
                     text = ': '.join([text, f'{score[k]:>.2f}'])
-                    location = (0 + st[0], 18 + k * 18 + st[1])
-                    textsize = cv2.getTextSize(text, FONTFACE, FONTSCALE,
-                                               THICKNESS)[0]
-                    textwidth = textsize[0]
-                    diag0 = (location[0] + textwidth, location[1] - 14)
-                    diag1 = (location[0], location[1] + 2)
-                    cv2.rectangle(frame, diag0, diag1, plate[k + 1], -1)
-                    cv2.putText(frame, text, location, FONTFACE, FONTSCALE,
-                                FONTCOLOR, THICKNESS, LINETYPE)
+                    location = (0 + st[0], k * 18 + st[1] - 38)
+
+                    # 使用 textbbox 方法计算文本的边界框大小
+                    bbox = draw.textbbox(location, text, font=font)
+                    textwidth = bbox[2] - bbox[0]
+                    textheight = bbox[3] - bbox[1]
+
+                    # 计算矩形的坐标
+                    diag0 = (location[0] + textwidth, location[1] + textheight + 5)  # 增加边距
+                    diag1 = (location[0] - 5, location[1] + 5)
+                    # 确保坐标有效
+                    x0, y0 = min(diag0[0], diag1[0]), min(diag0[1], diag1[1])
+                    x1, y1 = max(diag0[0], diag1[0]), max(diag0[1], diag1[1])
+
+                    # 使用半透明背景色绘制矩形
+                    draw.rectangle([x0, y0, x1, y1], fill=plate[k % len(plate)] + (200,))  # 为每个标签使用不同的颜色
+                    # draw.rectangle([x0, y0, x1, y1], fill=(18, 213, 212, 10))  # 半透明黑色背景框
+
+                    # 绘制文本的轮廓
+                    text_color = (255, 255, 255)
+                    outline_color = (213, 110, 18, 0)
+                    outline_width = 1
+
+                    # 轮廓
+                    # draw.text((location[0] - outline_width, location[1] - outline_width), text, font=font, fill=outline_color)
+                    # draw.text((location[0] + outline_width, location[1] - outline_width), text, font=font, fill=outline_color)
+                    # draw.text((location[0] - outline_width, location[1] + outline_width), text, font=font, fill=outline_color)
+                    # draw.text((location[0] + outline_width, location[1] + outline_width), text, font=font, fill=outline_color)
+
+                    # 绘制文本
+                    draw.text(location, text, font=font, fill=text_color)
+
+                frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+                frames_out[ind] = frame
 
     return frames_out
 
@@ -108,7 +135,8 @@ def load_label_map(file_path):
     Returns:
         dict: The label map (int -> label name).
     """
-    lines = open(file_path).readlines()
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
     lines = [x.strip().split(': ') for x in lines]
     return {int(x[0]): x[1] for x in lines}
 
@@ -223,8 +251,8 @@ def parse_args():
         action=DictAction,
         default={},
         help='override some settings in the used config, the key-value pair '
-        'in xxx=yyy format will be merged into config file. For example, '
-        "'--cfg-options model.backbone.depth=18 model.backbone.with_cp=True'")
+             'in xxx=yyy format will be merged into config file. For example, '
+             "'--cfg-options model.backbone.depth=18 model.backbone.with_cp=True'")
     args = parser.parse_args()
     return args
 
@@ -341,7 +369,7 @@ def main():
                 for j in range(proposal.shape[0]):
                     if scores[j, i] > args.action_score_thr:
                         prediction[j].append((label_map[i], scores[j,
-                                                                   i].item()))
+                        i].item()))
             predictions.append(prediction)
         prog_bar.update()
 

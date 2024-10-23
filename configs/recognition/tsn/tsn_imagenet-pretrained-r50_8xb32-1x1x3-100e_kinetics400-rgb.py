@@ -5,10 +5,10 @@ _base_ = [
 
 # dataset settings
 dataset_type = 'VideoDataset'
-data_root = 'data/kinetics400/videos_train'
-data_root_val = 'data/kinetics400/videos_val'
-ann_file_train = 'data/kinetics400/kinetics400_train_list_videos.txt'
-ann_file_val = 'data/kinetics400/kinetics400_val_list_videos.txt'
+data_root = 'data/self/train'
+data_root_val = 'data/self/val'
+ann_file_train = 'data/self/train_video.txt'
+ann_file_val = 'data/self/val_video.txt'
 
 file_client_args = dict(io_backend='disk')
 
@@ -58,7 +58,7 @@ test_pipeline = [
 ]
 
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=4,
     num_workers=8,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -93,7 +93,25 @@ test_dataloader = dict(
 val_evaluator = dict(type='AccMetric')
 test_evaluator = val_evaluator
 
-default_hooks = dict(checkpoint=dict(interval=3, max_keep_ckpts=3))
+# 每轮都保存权重，并且只保留最新的权重
+default_hooks = dict(
+    checkpoint=dict(type='CheckpointHook', interval=1, max_keep_ckpts=1))
+# 将最大 epoch 数设置为 10，并每 1 个 epoch验证模型
+train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=10, val_interval=1)
+#根据 10 个 epoch调整学习率调度
+param_scheduler = [
+    dict(
+        type='MultiStepLR',
+        begin=0,
+        end=10,
+        by_epoch=True,
+        milestones=[4, 8],
+        gamma=0.1)
+]
+
+model = dict(
+    cls_head=dict(num_classes=2))
+load_from = 'https://download.openmmlab.com/mmaction/v1.0/recognition/tsn/tsn_imagenet-pretrained-r50_8xb32-1x1x3-100e_kinetics400-rgb/tsn_imagenet-pretrained-r50_8xb32-1x1x3-100e_kinetics400-rgb_20220906-cd10898e.pth'
 
 # Default setting for scaling LR automatically
 #   - `enable` means enable scaling LR automatically
